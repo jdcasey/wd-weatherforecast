@@ -1,6 +1,10 @@
 Module.register("noaaforecast", {
 
     defaults: {
+        lat: config.lat,
+        lon: config.lon,
+
+        notificationsOnly: false,
         units: config.units,
         language: config.language,
         updateInterval: 5 * 60 * 1000, // every 5 minutes
@@ -46,7 +50,9 @@ Module.register("noaaforecast", {
         this.officeWeather = null;
         this.weatherData = null;
 
-        this.scheduleUpdate(this.config.initialLoadDelay);
+        if(!this.config.notificationsOnly){
+            this.scheduleUpdate(this.config.initialLoadDelay);
+        }
     },
 
     makeRequest: function(method, url, self){
@@ -86,6 +92,11 @@ Module.register("noaaforecast", {
     },
 
     updateWeather: function () {
+        if ( this.config.notificationsOnly ){
+            Log.log("Notification-only mode; waiting for notifications from another noaa module.");
+            return;
+        }
+
         if ( typeof this.officeWeather == "undefined" || this.officeWeather == null ){
             Log.log("Waiting for gridpoint office data before we can update weather...");
             this.scheduleUpdate(this.loaded ? -1 : this.config.retryDelay);
@@ -99,7 +110,8 @@ Module.register("noaaforecast", {
         var self = this;
 
         this.makeRequest("GET", url, self).then((response)=>{
-            self.processWeather(response);
+            this.forecastData = response;
+            self.processWeather();
         })
         .catch(function(err){
             self.updateDom(self.config.animationSpeed);
@@ -108,6 +120,11 @@ Module.register("noaaforecast", {
     },
 
     updateOfficeWeather: function(){
+        if ( this.config.notificationsOnly ){
+            Log.log("Notification-only mode; waiting for notifications from another noaa module.");
+            return;
+        }
+
         if ( this.officeWeather != null ){
             Log.log("We already have gridpoint office info...updating weather");
             this.updateWeather();
@@ -269,8 +286,14 @@ Module.register("noaaforecast", {
         return conditions[classifier];
     },
 
-    processWeather: function (data) {
+    processWeather: function () {
+        if (this.officeWeather == null || this.forecastData == null ){
+            Log.log("We don't have all the data we need for a weather update; waiting...");
+            return;
+        }
+
         var officeData = this.officeWeather;
+        var data = this.forecastData;
 
         if (this.config.debug) {
             console.log('weather data', data);
@@ -284,8 +307,11 @@ Module.register("noaaforecast", {
         this.updateDom(this.config.animationSpeed);
 
         this.scheduleUpdate();
-        this.sendNotification(this.NOTIFICATION_GRIDPOINT_DATA.toString(), { data: officeData });
-        this.sendNotification(this.NOTIFICATION_FORECAST_DATA.toString(), { data: data });
+
+        if(!this.config.notificationsOnly){
+            this.sendNotification(this.NOTIFICATION_GRIDPOINT_DATA.toString(), { data: officeData });
+            this.sendNotification(this.NOTIFICATION_FORECAST_DATA.toString(), { data: data });
+        }
     },
 
     processWeatherError: function (error) {
@@ -309,14 +335,22 @@ Module.register("noaaforecast", {
                 }
                 break;
             case "NOAAWEATHER_GRIDPOINT_DATA":
-                if(sender.name != "noaaforecast" && this.officeWeather != null ){
-                    this.officeWeather = payload.data;
+                this.officeWeather = payload;
+                Log.log("RECV: " + notification);
+                if ( this.officeWeather!= null && this.forecastData != null ){
+                    Log.log("Looks like we have all we need to process the weather!");
+                    this.processWeather();
                 }
                 break;
-            // case "NOAAWEATHER_HOURLY_DATA":
-            //     this.processWeather(payload);
-            //     Log.info("Got weather data in notification!");
-            //     break;
+
+            case "NOAAWEATHER_FORECAST_DATA":
+                this.forecastData = payload;
+                Log.log("RECV: " + notification);
+                if ( this.officeWeather != null && this.forecastData != null ){
+                    Log.log("Looks like we have all we need to process the weather!");
+                    this.processWeather();
+                }
+                break;
       }
     },
 
