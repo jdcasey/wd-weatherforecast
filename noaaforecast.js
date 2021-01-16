@@ -144,7 +144,7 @@ Module.register("noaaforecast", {
                                 .catch(function(err){
                                     self.updateDom(self.config.animationSpeed);
                                     retry = true;
-                                    Log.error("Failed to load NOAA office information for Lat/Lon: " + 
+                                    Log.error("Failed to load NOAA office information for Lat/Lon: " +
                                                 self.config.lat + "," + self.config.lon + ": " + err.status + " " + err.statusText);
                                 });
 
@@ -159,6 +159,29 @@ Module.register("noaaforecast", {
 
         for(let i=0; i<periods.length;i++){
             let period = periods[i];
+
+            if (!period.isDaytime || current == null){
+
+                // var dayText = new Date(Date.parse(period.endTime));
+                // dayText = moment.weekdaysShort(dayText.getDay()); // + " " + (measurement.isDaytime?"&nbsp;":"night");
+
+                let dayText = this.getDayFromTime(period);
+
+                let windSpeed = this.parseWindSpeed(period);
+                let wind = {speed: windSpeed, direction: period.windDirection};
+
+                let weatherIcon = this.parseWeatherIcon(period);
+                let precip = this.parsePrecipProbability(period);
+
+                current = {
+                    minTemp: period.temperature,
+                    maxTemp: period.temperature,
+                    precip: precip,
+                    wind: wind,
+                    dayText: dayText,
+                    weatherIcon: weatherIcon,
+                };
+            }
 
             if(period.isDaytime && current != null){
                 current.minTemp = Math.min(current.minTemp, parseFloat(period.temperature));
@@ -182,31 +205,8 @@ Module.register("noaaforecast", {
                     current.weatherIcon = weatherIcon[1] > current.weatherIcon[1] ? weatherIcon : current.weatherIcon;
                 }
 
-
                 result.push(current);
                 current = null;
-            }
-            else if (!period.isDaytime){
-
-                // var dayText = new Date(Date.parse(period.endTime));
-                // dayText = moment.weekdaysShort(dayText.getDay()); // + " " + (measurement.isDaytime?"&nbsp;":"night");
-
-                let dayText = this.getDayFromTime(period);
-
-                let windSpeed = this.parseWindSpeed(period);
-                let wind = {speed: windSpeed, direction: period.windDirection};
-
-                let weatherIcon = this.parseWeatherIcon(period);
-                let precip = this.parsePrecipProbability(period);
-
-                current = {
-                    minTemp: period.temperature,
-                    maxTemp: period.temperature,
-                    precip: precip,
-                    wind: wind,
-                    dayText: dayText,
-                    weatherIcon: weatherIcon,
-                };
             }
         }
 
@@ -337,19 +337,13 @@ Module.register("noaaforecast", {
             case "NOAAWEATHER_GRIDPOINT_DATA":
                 this.officeWeather = payload;
                 Log.log("RECV: " + notification);
-                if ( this.officeWeather!= null && this.forecastData != null ){
-                    Log.log("Looks like we have all we need to process the weather!");
-                    this.processWeather();
-                }
+                this.processWeather();
                 break;
 
             case "NOAAWEATHER_FORECAST_DATA":
                 this.forecastData = payload;
                 Log.log("RECV: " + notification);
-                if ( this.officeWeather != null && this.forecastData != null ){
-                    Log.log("Looks like we have all we need to process the weather!");
-                    this.processWeather();
-                }
+                this.processWeather();
                 break;
       }
     },
@@ -523,16 +517,20 @@ Module.register("noaaforecast", {
     },
 
     scheduleUpdate: function(delay) {
-        var nextLoad = this.config.updateInterval;
-        if (typeof delay !== "undefined" && delay >= 0) {
-            nextLoad = delay;
-        }
+      if ( !this.config.notificationsOnly ){
+        Log.log("This service is configured to only respond to data from noaanotifier. Skipping scheduled update");
+      }
 
-        var self = this;
+      var nextLoad = this.config.updateInterval;
+      if (typeof delay !== "undefined" && delay >= 0) {
+          nextLoad = delay;
+      }
 
-        setTimeout(function() {
-            self.updateOfficeWeather();
-        }, nextLoad);
+      var self = this;
+
+      setTimeout(function() {
+          self.updateOfficeWeather();
+      }, nextLoad);
     }
 
 });
