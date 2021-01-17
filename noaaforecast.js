@@ -36,12 +36,14 @@ Module.register("noaaforecast", {
 
     getScripts: function () {
         return [
-        'moment.js'
+          'moment.js'
         ];
     },
 
     getStyles: function () {
-        return ["font-awesome.css", "weather-icons.css", "weather-icons-wind.css", "noaaforecast.css"];
+        return [
+          "font-awesome.css", "weather-icons.css", "weather-icons-wind.css", "noaaforecast.css"
+        ];
     },
 
     start: function () {
@@ -49,108 +51,6 @@ Module.register("noaaforecast", {
 
         this.officeWeather = null;
         this.weatherData = null;
-
-        if(!this.config.notificationsOnly){
-            this.scheduleUpdate(this.config.initialLoadDelay);
-        }
-    },
-
-    makeRequest: function(method, url, self){
-        return new Promise(function(resolve, reject){
-            var request = new XMLHttpRequest();
-            request.open(method, url, true);
-
-            request.onload = function () {
-                if ( this.status === 200 ){
-                    resolve(JSON.parse(request.response));
-                }
-                else{
-                    self.scheduleUpdate(self.loaded ? -1 : self.config.retryDelay);
-
-                    // Log.log("HTTP response was invalid: " + this.status + " " + request.statusText);
-                    reject({
-                        status: this.status,
-                        statusText: request.statusText,
-                        error: "Non-OK HTTP status",
-                    });
-                }
-            };
-
-            request.onerror = function(){
-                // self.scheduleUpdate(self.loaded ? -1 : self.config.retryDelay);
-
-                // Log.log("Error making request: " + this.status + " " + err);
-                reject({
-                    status: this.status,
-                    statusText: request.statusText,
-                    error: err,
-                });
-            };
-
-            request.send();
-        });
-    },
-
-    updateWeather: function () {
-        if ( this.config.notificationsOnly ){
-            Log.log("Notification-only mode; waiting for notifications from another noaa module.");
-            return;
-        }
-
-        if ( typeof this.officeWeather == "undefined" || this.officeWeather == null ){
-            Log.log("Waiting for gridpoint office data before we can update weather...");
-            this.scheduleUpdate(this.loaded ? -1 : this.config.retryDelay);
-
-            return;
-        }
-
-        Log.log("Looking up forecast from office URL: " + this.officeWeather.properties.forecast);
-
-        var url = this.officeWeather.properties.forecast;
-        var self = this;
-
-        this.makeRequest("GET", url, self).then((response)=>{
-            this.forecastData = response;
-            self.processWeather();
-        })
-        .catch(function(err){
-            self.updateDom(self.config.animationSpeed);
-            Log.error("Failed to load NOAA forecast from: " + url + ": " + err.error);
-        });
-    },
-
-    updateOfficeWeather: function(){
-        if ( this.config.notificationsOnly ){
-            Log.log("Notification-only mode; waiting for notifications from another noaa module.");
-            return;
-        }
-
-        if ( this.officeWeather != null ){
-            Log.log("We already have gridpoint office info...updating weather");
-            this.updateWeather();
-        }
-
-        // Log.log("Looking up NOAA weather by lat/long");
-
-        var url = this.config.apiBase + '/points/' + this.config.lat + "," + this.config.lon;
-        var self = this;
-        var retry = true;
-
-        var officePromise = this.makeRequest("GET", url, self)
-                                .then(function(response){
-                                    self.officeWeather = response;
-                                    self.updateWeather();
-                                })
-                                .catch(function(err){
-                                    self.updateDom(self.config.animationSpeed);
-                                    retry = true;
-                                    Log.error("Failed to load NOAA office information for Lat/Lon: " +
-                                                self.config.lat + "," + self.config.lon + ": " + err.status + " " + err.statusText);
-                                });
-
-        // Promise.all([officePromise]).then((values)=>{
-        //     // Log.log("All prelim promises done, with values: " + values);
-        // })
     },
 
     alignPeriods: function(periods){
@@ -305,22 +205,6 @@ Module.register("noaaforecast", {
         this.loaded = true;
 
         this.updateDom(this.config.animationSpeed);
-
-        this.scheduleUpdate();
-
-        if(!this.config.notificationsOnly){
-            this.sendNotification(this.NOTIFICATION_GRIDPOINT_DATA.toString(), { data: officeData });
-            this.sendNotification(this.NOTIFICATION_FORECAST_DATA.toString(), { data: data });
-        }
-    },
-
-    processWeatherError: function (error) {
-        if (this.config.debug) {
-            console.log('process weather error', error);
-        }
-        // try later
-
-        this.scheduleUpdate();
     },
 
     notificationReceived: function(notification, payload, sender) {
@@ -515,22 +399,5 @@ Module.register("noaaforecast", {
 
         return temp;
     },
-
-    scheduleUpdate: function(delay) {
-      if ( !this.config.notificationsOnly ){
-        Log.log("This service is configured to only respond to data from noaanotifier. Skipping scheduled update");
-      }
-
-      var nextLoad = this.config.updateInterval;
-      if (typeof delay !== "undefined" && delay >= 0) {
-          nextLoad = delay;
-      }
-
-      var self = this;
-
-      setTimeout(function() {
-          self.updateOfficeWeather();
-      }, nextLoad);
-    }
 
 });
