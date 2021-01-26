@@ -1,15 +1,15 @@
-.noaaforecast {
+.wd-weatherforecast {
 }
 
-.noaaforecast .dark{
+.wd-weatherforecast .dark{
   color: #777;
 }
 
-.noaaforecast .darker{
+.wd-weatherforecast .darker{
   color: #444;
 }
 
-.noaaforecast .big-icon {
+.wd-weatherforecast .big-icon {
   font-size: 75%;
   line-height: 65px;
   display: inline-block;
@@ -18,50 +18,50 @@
   transform: translate(0, -3px);
 }
 
-.noaaforecast .summary {
+.wd-weatherforecast .summary {
   width: 400px;
 }
 
-.noaaforecast .forecast {
+.wd-weatherforecast .forecast {
   text-align: left;
   min-width: 400px;
   margin-top: 1ex;
 }
 
-.noaaforecast .forecast-row {
+.wd-weatherforecast .forecast-row {
 }
 
-.noaaforecast .forecast-row>span {
+.wd-weatherforecast .forecast-row>span {
   display: table-cell;
   width: 1px;
 }
 
-.noaaforecast .forecast-row .forecast-day {
+.wd-weatherforecast .forecast-row .forecast-day {
   text-align: left;
   padding-right: 0.2em;
 }
-.noaaforecast .forecast-row .weathericon {
+.wd-weatherforecast .forecast-row .weathericon {
   text-align: center;
   padding-right: 0.5em;
 }
 
-.noaaforecast .forecast-row .forecast-precip-prob {
+.wd-weatherforecast .forecast-row .forecast-precip-prob {
   font-size: 70%;
   padding-right: 0.5em;
   text-align: right;
 }
 
-.noaaforecast .forecast-bar {
+.wd-weatherforecast .forecast-bar {
   display: table;
   overflow: hidden;
 }
 
-.noaaforecast .forecast-bar>span {
+.wd-weatherforecast .forecast-bar>span {
   display: table-cell;
   text-align: center;
 }
 
-.noaaforecast .forecast-bar .bar {
+.wd-weatherforecast .forecast-bar .bar {
   background-color: #aaa;
   line-height: 0.8em;
   border-radius: 1em;
@@ -70,41 +70,41 @@
   color: black;
 }
 
-.noaaforecast .dark .forecast-bar .bar {
+.wd-weatherforecast .dark .forecast-bar .bar {
   background-color: #777;
 }
 
-.noaaforecast .darker .forecast-bar .bar {
+.wd-weatherforecast .darker .forecast-bar .bar {
   background-color: #555;
 }
 
-.noaaforecast .precipitation-graph {
+.wd-weatherforecast .precipitation-graph {
   border: 1px solid #aaa;
   margin-top: 1ex;
 }
 
-.small.noaaforecast .forecast {
+.small.wd-weatherforecast .forecast {
   min-width: 200px;
   max-width: 300px;
 }
 
-.small.noaaforecast .summary {
+.small.wd-weatherforecast .summary {
   width: 300px;
 }
 
-.small.noaaforecast .precipitation-graph {
+.small.wd-weatherforecast .precipitation-graph {
   width: 300px;
 }
 
-.small.noaaforecast .forecast-row {
+.small.wd-weatherforecast .forecast-row {
   font-size: 70%;
 }
 
-.small.noaaforecast .forecast-bar .bar {
+.small.wd-weatherforecast .forecast-bar .bar {
   line-height: 0.6em;
 }
 
-.noaaforecast .sunrise-sunset > span.wi {
+.wd-weatherforecast .sunrise-sunset > span.wi {
   padding-right: 0.3em;
   padding-left: 0.3em;
 }

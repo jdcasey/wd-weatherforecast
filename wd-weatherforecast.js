@@ -1,4 +1,4 @@
-Module.register("noaaforecast", {
+Module.register("wd-weatherforecast", {
 
     defaults: {
         units: config.units,
@@ -33,7 +33,7 @@ Module.register("noaaforecast", {
 
     getStyles: function () {
         return [
-          "font-awesome.css", "weather-icons.css", "weather-icons-wind.css", "noaaforecast.css"
+          "font-awesome.css", "weather-icons.css", "weather-icons-wind.css", "wd-weatherforecast.css"
         ];
     },
 
