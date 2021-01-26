@@ -1,16 +1,9 @@
 Module.register("noaaforecast", {
 
     defaults: {
-        lat: config.lat,
-        lon: config.lon,
-
-        notificationsOnly: false,
         units: config.units,
         language: config.language,
-        updateInterval: 5 * 60 * 1000, // every 5 minutes
         animationSpeed: 1000,
-        initialLoadDelay: 3, // 0 seconds delay
-        retryDelay: 2500,
         showDailyPrecipitationChance: true,
         showIndoorTemperature: false,
         showTextSummary: true,
@@ -26,8 +19,6 @@ Module.register("noaaforecast", {
         debug: false
     },
 
-    NOTIFICATION_GRIDPOINT_DATA: "NOAAWEATHER_GRIDPOINT_DATA",
-    NOTIFICATION_FORECAST_DATA: "NOAAWEATHER_FORECAST_DATA",
     ONE_DAY_IN_MS: 86400000,
 
     getTranslations: function () {
@@ -49,68 +40,10 @@ Module.register("noaaforecast", {
     start: function () {
         Log.info("Starting module: " + this.name);
 
-        this.officeWeather = null;
+        // Set locale.
+        moment.locale(config.language);
+
         this.weatherData = null;
-    },
-
-    alignPeriods: function(periods){
-        let current = null;
-        var result = [];
-
-        for(let i=0; i<periods.length;i++){
-            let period = periods[i];
-
-            if (!period.isDaytime || current == null){
-
-                // var dayText = new Date(Date.parse(period.endTime));
-                // dayText = moment.weekdaysShort(dayText.getDay()); // + " " + (measurement.isDaytime?"&nbsp;":"night");
-
-                let dayText = this.getDayFromTime(period);
-
-                let windSpeed = this.parseWindSpeed(period);
-                let wind = {speed: windSpeed, direction: period.windDirection};
-
-                let weatherIcon = this.parseWeatherIcon(period);
-                let precip = this.parsePrecipProbability(period);
-
-                current = {
-                    minTemp: period.temperature,
-                    maxTemp: period.temperature,
-                    precip: precip,
-                    wind: wind,
-                    dayText: dayText,
-                    weatherIcon: weatherIcon,
-                };
-            }
-
-            if(period.isDaytime && current != null){
-                current.minTemp = Math.min(current.minTemp, parseFloat(period.temperature));
-                current.maxTemp = Math.max(current.maxTemp, parseFloat(period.temperature));
-                current.precip = Math.max(current.precip, this.parsePrecipProbability(period));
-
-                let wind = {
-                    speed: this.parseWindSpeed(period),
-                    direction: period.windDirection,
-                };
-
-                let prevailingWindSpeed = Math.max(current.wind.speed, wind.speed);
-                wind = prevailingWindSpeed == wind.speed ? wind : current.wind;
-                current.wind = wind;
-
-                let weatherIcon = this.parseWeatherIcon(period);
-                if(current.weatherIcon == null ){
-                    current.weatherIcon = weatherIcon;
-                }
-                else if ( weatherIcon != null ){
-                    current.weatherIcon = weatherIcon[1] > current.weatherIcon[1] ? weatherIcon : current.weatherIcon;
-                }
-
-                result.push(current);
-                current = null;
-            }
-        }
-
-        return result;
     },
 
     getDayFromTime: function(measurement) {
@@ -118,89 +51,17 @@ Module.register("noaaforecast", {
         return moment.weekdaysShort(dt.getDay()); // + " " + (measurement.isDaytime?"&nbsp;":"night");
     },
 
-    parseWindSpeed: function(data){
-        if ( data.windSpeed == null || data.windSpeed.length < 1 ){
-            return 0;
-        }
-
-        return parseInt(data.windSpeed.split(" ")[0]);
-    },
-
-    parsePrecipProbability: function(data){
-        var iconData = data.icon.split('/');
-        iconData = iconData[iconData.length-1];
-        iconData = iconData.split('?')[0];
-        iconData = iconData.split(',');
-
-        var prob = 0;
-        if(iconData.length > 1){
-            prob = parseInt(iconData[1]);
-        }
-
-        return prob;
-    },
-
-    parseWeatherIcon: function(data){
-        var classifier = data.icon.split("/");
-        classifier = classifier[classifier.length-1].split("?")[0].split(",")[0];
-
-        // Log.log("Weather classifier is: " + classifier);
-
-        var conditions = {
-            "skc": ["sunny", 0],
-            "few": ["sunny", 0],
-            "sct": ["sunny-overcast", 10],
-            "bkn": ["sunny-overcast", 10],
-            "ovc": ["cloudy", 20],
-            "wind_skc": ["windy", 30],
-            "wind_few": ["windy", 30],
-            "wind_sct": ["cloudy-windy", 40],
-            "wind_bkn": ["cloudy-windy", 40],
-            "wind_ovc": ["cloudy-windy", 40],
-            "snow": ["snow", 50],
-            "rain_snow": ["rain-mix", 60],
-            "rain_sleet": ["sleet", 60],
-            "snow_sleet": ["sleet", 60],
-            "fzra": ["rain-mix", 60],
-            "rain_fzra": ["rain-mix", 60],
-            "snow_fzra": ["rain-mix", 60],
-            "sleet": ["sleet", 60],
-            "rain": ["rain", 50],
-            "rain_showers": ["showers", 45],
-            "rain_showers_hi": ["showers", 45],
-            "tsra": ["thunderstorm", 60],
-            "tsra_sct": ["thunderstorm", 60],
-            "tsra_hi": ["thunderstorm", 60],
-            "tornado": ["wi-tornado", 1000],
-            "hurricane": ["wi-hurricane-warning", 900],
-            "tropical_storm": ["wi-hurricane", 800],
-            "dust": ["wi-dust", 200],
-            "smoke": ["wi-smoke", 300],
-            "haze": ["wi-haze", 65],
-            "hot": ["wi-hot", 65],
-            "cold": ["wi-cold", 65],
-            "blizzard": ["snow-wind", 75],
-            "fog": ["fog", 55],
-        };
-
-        return conditions[classifier];
-    },
-
     processWeather: function () {
-        if (this.officeWeather == null || this.forecastData == null ){
+        if (this.weatherData === null ){
             Log.log("We don't have all the data we need for a weather update; waiting...");
             return;
         }
 
-        var officeData = this.officeWeather;
-        var data = this.forecastData;
+        var data = this.weatherData;
 
         if (this.config.debug) {
             console.log('weather data', data);
         }
-
-        var periods = this.alignPeriods(data.properties.periods);
-        this.weatherData = {daily: {data: periods}};
 
         this.loaded = true;
 
@@ -212,20 +73,8 @@ Module.register("noaaforecast", {
         switch(notification) {
             case "DOM_OBJECTS_CREATED":
                 break;
-            case "INDOOR_TEMPERATURE":
-                if (this.config.showIndoorTemperature) {
-                  this.roomTemperature = payload;
-                  this.updateDom(this.config.animationSpeed);
-                }
-                break;
-            case "NOAAWEATHER_GRIDPOINT_DATA":
-                this.officeWeather = payload;
-                Log.log("RECV: " + notification);
-                this.processWeather();
-                break;
-
-            case "NOAAWEATHER_FORECAST_DATA":
-                this.forecastData = payload;
+            case "WEATHER_REFRESHED":
+                this.weatherData = payload;
                 Log.log("RECV: " + notification);
                 this.processWeather();
                 break;
@@ -247,19 +96,19 @@ Module.register("noaaforecast", {
     },
 
     renderForecastRow: function (data, min, max, addClass) {
-        var total = max - min;
-        var interval = 100 / total;
-        var rowMinTemp = this.roundTemp(data.minTemp);
-        var rowMaxTemp = this.roundTemp(data.maxTemp);
+        const total = max - min;
+        const interval = 100 / total;
+        const rowMinTemp = this.roundTemp(data.temp.min);
+        const rowMaxTemp = this.roundTemp(data.temp.max);
 
-        var row = document.createElement("tr");
+        const row = document.createElement("tr");
         row.className = "forecast-row" + (addClass ? " " + addClass : "");
 
-        var dayTextSpan = document.createElement("span");
+        const dayTextSpan = document.createElement("span");
         dayTextSpan.className = "forecast-day"
-        dayTextSpan.innerHTML = data.dayText;
+        dayTextSpan.innerHTML = moment(data.dt * 1000).format("ddd");
 
-        var iconClass = data.weatherIcon;
+        var iconClass = data.weather[0].weatherClass;
         if ( iconClass != null ){
             iconClass = iconClass[0];
 
@@ -275,25 +124,25 @@ Module.register("noaaforecast", {
         wind.className = "small dimmed wind";
 
         var windBearing = document.createElement("span");
-        windBearing.className = "wi wi-wind from-" + data.wind.direction.toLowerCase();
+        windBearing.className = "wi wi-wind from-" + data.windDirection.toLowerCase();
         wind.appendChild(windBearing);
 
-        var cardinalDirection = data.wind.direction;
+        var cardinalDirection = data.windDirection;
 
         var windSpeed = document.createElement("span");
-        if (this.config.units === 'metric') {
+        if (this.weatherData.config.units === 'metric') {
           var windSpeedUnit = "m/s";
         } else {
           var windSpeedUnit = "mph";
         }
 
-        windSpeed.innerHTML = " " + cardinalDirection + " " + data.wind.speed + windSpeedUnit;
+        windSpeed.innerHTML = " " + cardinalDirection + " " + Math.round(data.wind_speed) + windSpeedUnit;
         wind.appendChild(windSpeed);
 
         var dayPrecipProb = document.createElement("span");
         dayPrecipProb.className = "forecast-precip-prob";
 
-        var precipProbability = data.precip;
+        var precipProbability = data.pop * 100;
 
         // if (precipProbability > 0) {
             dayPrecipProb.innerHTML = precipProbability + "%";
@@ -348,33 +197,25 @@ Module.register("noaaforecast", {
         return row;
     },
 
-    getDayOfYear: function(tstamp_ms){
-        var firstday = Math.floor(new Date().setFullYear(new Date().getFullYear(),0,1) / this.ONE_DAY_IN_MS);
-        var day = Math.ceil(tstamp_ms / this.ONE_DAY_IN_MS);
-        return day - firstday;
-    },
-
     renderWeatherForecast: function () {
-        var numRows =  this.config.maxDaysForecast;
-        var i;
+        const numRows =  this.config.maxDaysForecast;
+        const filteredRows = this.weatherData.daily.filter( function(d, i) { return (i < numRows); });
 
-        var filteredRows = this.weatherData.daily.data.filter( function(d, i) { return (i < numRows); });
-
-        var min = Number.MAX_VALUE;
-        var max = -Number.MAX_VALUE;
-        for (i = 0; i < filteredRows.length; i++) {
-            var row = filteredRows[i];
-            max = Math.max(max, row.maxTemp);
-            min = Math.min(min, row.minTemp);
+        let min = Number.MAX_VALUE;
+        let max = -Number.MAX_VALUE;
+        for (let i = 0; i < filteredRows.length; i++) {
+            const row = filteredRows[i];
+            max = Math.max(max, row.temp.max);
+            min = Math.min(min, row.temp.min);
         }
         min = Math.round(min);
         max = Math.round(max);
 
-        var display = document.createElement("table");
+        const display = document.createElement("table");
         display.className = this.config.forecastTableFontSize + " forecast";
         for (i = 0; i < filteredRows.length; i++) {
-            var day = filteredRows[i];
-            var addClass = "";
+            const day = filteredRows[i];
+            let addClass = "";
             if(this.config.fadeForecast) {
                 if(i+2 == filteredRows.length) {
                     addClass = "dark";
@@ -383,7 +224,7 @@ Module.register("noaaforecast", {
                     addClass = "darker";
                 }
             }
-            var row = this.renderForecastRow(day, min, max, addClass);
+            const row = this.renderForecastRow(day, min, max, addClass);
             display.appendChild(row);
         }
         return display;
