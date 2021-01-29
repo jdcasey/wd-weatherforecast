@@ -98,8 +98,8 @@ Module.register("wd-weatherforecast", {
     renderForecastRow: function (data, min, max, addClass) {
         const total = max - min;
         const interval = 100 / total;
-        const rowMinTemp = this.roundTemp(data.temp.min);
-        const rowMaxTemp = this.roundTemp(data.temp.max);
+        const rowMinTemp = Math.round(parseFloat(data.temp.min));
+        const rowMaxTemp = Math.round(parseFloat(data.temp.max));
 
         const row = document.createElement("tr");
         row.className = "forecast-row" + (addClass ? " " + addClass : "");
@@ -136,13 +136,13 @@ Module.register("wd-weatherforecast", {
           var windSpeedUnit = "mph";
         }
 
-        windSpeed.innerHTML = " " + cardinalDirection + " " + Math.round(data.wind_speed) + windSpeedUnit;
+        windSpeed.innerHTML = " " + cardinalDirection + " " + Math.round(parseFloat(data.wind_speed)) + windSpeedUnit;
         wind.appendChild(windSpeed);
 
         var dayPrecipProb = document.createElement("span");
         dayPrecipProb.className = "forecast-precip-prob";
 
-        var precipProbability = data.pop * 100;
+        var precipProbability = Math.round(data.pop * 100);
 
         // if (precipProbability > 0) {
             dayPrecipProb.innerHTML = precipProbability + "%";
